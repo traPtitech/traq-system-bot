@@ -91,8 +91,8 @@ func createChannelMention(channel channelPayload) string {
 }
 
 func sendMessage(channelID string, text string) error {
-	b, _ := json.Marshal(map[string]string{"text": text})
-	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/1.0/channels/%s/messages", traqOrigin, channelID), bytes.NewReader(b))
+	b, _ := json.Marshal(map[string]string{"content": text})
+	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v3/channels/%s/messages", traqOrigin, channelID), bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
