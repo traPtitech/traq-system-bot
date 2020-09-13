@@ -6,7 +6,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.13
   gcloud:
     docker:
       - image: google/cloud-sdk:latest
@@ -17,7 +17,7 @@ jobs:
     steps:
       - checkout
       - gcp-cli/initialize
-      - run: gcloud functions deploy bot --quiet --runtime go111 --trigger-http --entry-point BotEndpoint --memory 128MB --region asia-northeast1 --set-env-vars BOT_VERIFICATION_TOKEN=$BOT_VERIFICATION_TOKEN,BOT_ACCESS_TOKEN=$BOT_ACCESS_TOKEN,BOT_SYSTEM_MESSAGE_CHANNEL_ID=$BOT_SYSTEM_MESSAGE_CHANNEL_ID,TRAQ_ORIGIN=$TRAQ_ORIGIN
+      - run: gcloud functions deploy bot --quiet --runtime go113 --trigger-http --entry-point BotEndpoint --memory 128MB --region asia-northeast1 --set-env-vars BOT_VERIFICATION_TOKEN=$BOT_VERIFICATION_TOKEN,BOT_ACCESS_TOKEN=$BOT_ACCESS_TOKEN,BOT_SYSTEM_MESSAGE_CHANNEL_ID=$BOT_SYSTEM_MESSAGE_CHANNEL_ID,TRAQ_ORIGIN=$TRAQ_ORIGIN
 
 workflows:
   deploy:
