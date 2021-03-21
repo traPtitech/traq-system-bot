@@ -2,4 +2,4 @@
 .git
 .idea
 .gcloudignore
-.circleci
+.github
