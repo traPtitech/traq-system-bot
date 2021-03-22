@@ -14,7 +14,7 @@ jobs:
     - name: deploy
       uses: google-github-actions/deploy-cloud-functions@main
       with:
-        name: sysad-webhook-logger
+        name: bot
         runtime: go113
         entry_point: BotEndpoint
         memory_mb: 128
