@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"path"
 
+	"cloud.google.com/go/compute/metadata"
 	"cloud.google.com/go/logging"
 	mrpb "google.golang.org/genproto/googleapis/api/monitoredres"
 )
@@ -17,9 +19,11 @@ var (
 )
 
 func loggerInit() {
-	projectID = os.Getenv("GCP_PROJECT")
-	functionName = os.Getenv("FUNCTION_NAME")
-	region = os.Getenv("FUNCTION_REGION")
+	projectID, _ = metadata.ProjectID()
+	functionName = os.Getenv("K_SERVICE")
+	instanceRegion, _ := metadata.Get("instance/region")
+	region := path.Base(instanceRegion)
+
 	client, err := logging.NewClient(context.Background(), projectID)
 	if err != nil {
 		panic(err)
