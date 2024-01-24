@@ -51,6 +51,20 @@ func BotEndpoint(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		w.WriteHeader(http.StatusNoContent)
+	case "USER_ACTIVATED":
+		var req userActivatedPayload
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		infoL(r, fmt.Sprintf("USER_ACTIVATED(UID:%s) was received", req.User.ID))
+
+		if !req.User.Bot {
+			if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s の凍結が解除されました`, createUserMention(req.User))); err != nil {
+				errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
 	case "CHANNEL_CREATED":
 		var req channelCreatedPayload
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
