@@ -18,6 +18,7 @@ type userCreatedPayload struct {
 	basePayload
 	User userPayload `json:"user"`
 }
+
 type userActivatedPayload struct {
 	basePayload
 	User userPayload `json:"user"`

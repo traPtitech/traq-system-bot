@@ -60,7 +60,7 @@ func BotEndpoint(w http.ResponseWriter, r *http.Request) {
 		infoL(r, fmt.Sprintf("USER_ACTIVATED(UID:%s) was received", req.User.ID))
 
 		if !req.User.Bot {
-			if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s の凍結が解除されました`, createUserMention(req.User))); err != nil {
+			if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s がtraQに帰ってきました`, createUserMention(req.User))); err != nil {
 				errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
 			}
 		}
