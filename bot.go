@@ -85,7 +85,7 @@ func BotEndpoint(w http.ResponseWriter, r *http.Request) {
 		}
 		infoL(r, fmt.Sprintf("STAMP_CREATED(SID:%s) was received", req.ID))
 
-		if err := sendMessage(systemMessageChannelID, fmt.Sprintf("%s がスタンプ `:%s:` :%s: を作成しました", createUserMention(req.Creator), req.Name, req.Name)); err != nil {
+		if err := sendMessage(systemMessageChannelID, fmt.Sprintf("%s がスタンプ `:%s:` :%s.ex-large: を作成しました", createUserMention(req.Creator), req.Name, req.Name)); err != nil {
 			errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
 		}
 		w.WriteHeader(http.StatusNoContent)
