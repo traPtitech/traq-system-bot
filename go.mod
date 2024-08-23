@@ -1,7 +1,14 @@
 module github.com/traPtitech/traq-system-bot
 
+go 1.22.6
+
 require (
-	cloud.google.com/go v0.81.0
-	cloud.google.com/go/logging v1.4.1
-	google.golang.org/genproto v0.0.0-20210513213006-bf773b8c8384
+	github.com/traPtitech/go-traq v0.0.0-20240725071454-97c7b85dc879
+	github.com/traPtitech/traq-ws-bot v1.2.0
+)
+
+require (
+	github.com/gofrs/uuid/v5 v5.3.0 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
+	golang.org/x/oauth2 v0.22.0 // indirect
 )

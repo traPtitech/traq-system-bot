@@ -1,122 +1,93 @@
-package traq_system_bot
+package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
+	"context"
 	"fmt"
-	"net/http"
+	"github.com/traPtitech/go-traq"
+	traqwsbot "github.com/traPtitech/traq-ws-bot"
+	"github.com/traPtitech/traq-ws-bot/payload"
+	"log/slog"
 	"os"
 )
 
+func mustGetEnv(key string) string {
+	v, ok := os.LookupEnv(key)
+	if !ok {
+		panic(fmt.Sprintf("environment variable %s must be set", key))
+	}
+	return v
+}
+
 var (
-	verificationToken      string
-	accessToken            string
-	systemMessageChannelID string
-	traqOrigin             string
+	systemMessageChannelID = mustGetEnv("BOT_SYSTEM_MESSAGE_CHANNEL_ID")
 )
 
-func init() {
-	verificationToken = os.Getenv("BOT_VERIFICATION_TOKEN")
-	accessToken = os.Getenv("BOT_ACCESS_TOKEN")
-	systemMessageChannelID = os.Getenv("BOT_SYSTEM_MESSAGE_CHANNEL_ID")
-	traqOrigin = os.Getenv("TRAQ_ORIGIN")
-	loggerInit()
-}
-
-func BotEndpoint(w http.ResponseWriter, r *http.Request) {
-	defer logger.Flush()
-	if r.Header.Get("X-TRAQ-BOT-TOKEN") != verificationToken {
-		infoL(r, "Wrong X-TRAQ-BOT-TOKEN request was received")
-		w.WriteHeader(http.StatusUnauthorized)
-		return
+func main() {
+	bot, err := traqwsbot.NewBot(&traqwsbot.Options{
+		AccessToken: mustGetEnv("BOT_ACCESS_TOKEN"),
+		Origin:      os.Getenv("TRAQ_ORIGIN"),
+	})
+	if err != nil {
+		panic(err)
 	}
 
-	event := r.Header.Get("X-TRAQ-BOT-EVENT")
-	switch event {
-	case "PING":
-		infoL(r, "PING was received")
-		w.WriteHeader(http.StatusNoContent)
-	case "USER_CREATED":
-		var req userCreatedPayload
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		infoL(r, fmt.Sprintf("USER_CREATED(UID:%s) was received", req.User.ID))
+	registerHandlers(bot)
 
-		if !req.User.Bot {
-			if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s がtraQに参加しました`, createUserMention(req.User))); err != nil {
-				errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
-			}
-		}
-		w.WriteHeader(http.StatusNoContent)
-	case "USER_ACTIVATED":
-		var req userActivatedPayload
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		infoL(r, fmt.Sprintf("USER_ACTIVATED(UID:%s) was received", req.User.ID))
-
-		if !req.User.Bot {
-			if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s がtraQに帰ってきました`, createUserMention(req.User))); err != nil {
-				errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
-			}
-		}
-		w.WriteHeader(http.StatusNoContent)
-	case "CHANNEL_CREATED":
-		var req channelCreatedPayload
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		infoL(r, fmt.Sprintf("CHANNEL_CREATED(UID:%s) was received", req.Channel.ID))
-
-		if err := sendMessage(systemMessageChannelID, fmt.Sprintf(`%s がチャンネル %s を作成しました`, createUserMention(req.Channel.Creator), createChannelMention(req.Channel))); err != nil {
-			errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
-		}
-		w.WriteHeader(http.StatusNoContent)
-	case "STAMP_CREATED":
-		var req stampCreatedPayload
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		infoL(r, fmt.Sprintf("STAMP_CREATED(SID:%s) was received", req.ID))
-
-		if err := sendMessage(systemMessageChannelID, fmt.Sprintf("%s がスタンプ `:%s:` を作成しました\n:%s.ex-large:", createUserMention(req.Creator), req.Name, req.Name)); err != nil {
-			errorL(r, fmt.Sprintf("sendMessage failed: %v", err))
-		}
-		w.WriteHeader(http.StatusNoContent)
-	default:
-		infoL(r, fmt.Sprintf("Unknown X-TRAQ-BOT-EVENT was received: %s", event))
-		w.WriteHeader(http.StatusBadRequest)
+	err = bot.Start()
+	if err != nil {
+		panic(err)
 	}
-	return
 }
 
-func createUserMention(user userPayload) string {
+func registerHandlers(bot *traqwsbot.Bot) {
+	bot.OnUserCreated(func(p *payload.UserCreated) {
+		slog.Info("USER_CREATED event received", "uid", p.User.ID)
+		if !p.User.Bot {
+			if err := sendMessage(bot, fmt.Sprintf(`%s がtraQに参加しました`, createUserMention(p.User))); err != nil {
+				slog.Error("sendMessage failed", "err", err)
+			}
+		}
+	})
+	bot.OnUserActivated(func(p *payload.UserActivated) {
+		slog.Info("USER_ACTIVATED event received", "uid", p.User.ID)
+		if !p.User.Bot {
+			if err := sendMessage(bot, fmt.Sprintf(`%s がtraQに帰ってきました`, createUserMention(p.User))); err != nil {
+				slog.Error("sendMessage failed", "err", err)
+			}
+		}
+	})
+
+	bot.OnChannelCreated(func(p *payload.ChannelCreated) {
+		slog.Info("CHANNEL_CREATED event received", "cid", p.Channel.ID)
+		if err := sendMessage(bot, fmt.Sprintf(`%s がチャンネル %s を作成しました`, createUserMention(p.Channel.Creator), createChannelMention(p.Channel))); err != nil {
+			slog.Error("sendMessage failed", "err", err)
+		}
+	})
+
+	bot.OnStampCreated(func(p *payload.StampCreated) {
+		slog.Info("STAMP_CREATED event received", "sid", p.ID)
+		if err := sendMessage(bot, fmt.Sprintf("%s がスタンプ `:%s:` を作成しました\n:%s.ex-large:", createUserMention(p.Creator), p.Name, p.Name)); err != nil {
+			slog.Error("sendMessage failed", "err", err)
+		}
+	})
+}
+
+func createUserMention(user payload.User) string {
 	return fmt.Sprintf(`!{"type":"user","raw":"@%s","id":"%s"}`, user.Name, user.ID)
 }
 
-func createChannelMention(channel channelPayload) string {
+func createChannelMention(channel payload.Channel) string {
 	return fmt.Sprintf(`!{"type":"channel","raw":"%s","id":"%s"}`, channel.Path, channel.ID)
 }
 
-func sendMessage(channelID string, text string) error {
-	b, _ := json.Marshal(map[string]string{"content": text})
-	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/api/v3/channels/%s/messages", traqOrigin, channelID), bytes.NewReader(b))
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusCreated {
-		return errors.New(res.Status)
-	}
-	return nil
+func sendMessage(bot *traqwsbot.Bot, text string) error {
+	_, _, err := bot.API().
+		ChannelApi.
+		PostMessage(context.Background(), systemMessageChannelID).
+		PostMessageRequest(traq.PostMessageRequest{
+			Content: text,
+			Embed:   nil,
+		}).
+		Execute()
+	return err
 }
