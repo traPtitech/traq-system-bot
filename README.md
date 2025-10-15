@@ -24,5 +24,8 @@
 ### 環境変数
 
 - `BOT_SYSTEM_MESSAGE_CHANNEL_ID`: 通知メッセージを投稿したいチャンネルのUUID。
+- `BOT_SYSTEM_SUBSCRIBING_EVENTS`: 通知するイベントのID (カンマ区切り)
+  - 設定しないときは全てのイベントを通知する
+  - `USER_CREATED` / `USER_ACTIVATED` / `CHANNEL_CREATED` / `STAMP_CREATED`
 - `TRAQ_ORIGIN`: 接続するtraQインスタンスのURL。WebSocketプロトコルを使用。例: `wss://q.trap.jp`
 - `BOT_ACCESS_TOKEN`: Botのアクセストークン。
