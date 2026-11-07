@@ -36,6 +36,8 @@ const (
 	eventTypeUserActivated
 	eventTypeChannelCreated
 	eventTypeStampCreated
+	eventTypeStampUpdated
+	eventTypeStampDeleted
 )
 
 func mustParseSubscribingEvents(s string) []eventType {
@@ -50,6 +52,10 @@ func mustParseSubscribingEvents(s string) []eventType {
 			events = append(events, eventTypeChannelCreated)
 		case "STAMP_CREATED":
 			events = append(events, eventTypeStampCreated)
+		case "STAMP_UPDATED":
+			events = append(events, eventTypeStampUpdated)
+		case "STAMP_DELETED":
+			events = append(events, eventTypeStampDeleted)
 		default:
 			panic(fmt.Sprintf("unknown event type: %s", name))
 		}
@@ -58,11 +64,14 @@ func mustParseSubscribingEvents(s string) []eventType {
 }
 
 var (
-	systemMessageChannelID = mustGetEnv("BOT_SYSTEM_MESSAGE_CHANNEL_ID")
-	subscribingEvents      = mustParseSubscribingEvents(getEnvWithDefault("BOT_SYSTEM_SUBSCRIBING_EVENTS", "USER_CREATED,USER_ACTIVATED,CHANNEL_CREATED,STAMP_CREATED"))
+	systemMessageChannelID string
+	subscribingEvents      []eventType
 )
 
 func main() {
+	systemMessageChannelID = mustGetEnv("BOT_SYSTEM_MESSAGE_CHANNEL_ID")
+	subscribingEvents = mustParseSubscribingEvents(getEnvWithDefault("BOT_SYSTEM_SUBSCRIBING_EVENTS", "USER_CREATED,USER_ACTIVATED,CHANNEL_CREATED,STAMP_CREATED,STAMP_UPDATED,STAMP_DELETED"))
+
 	bot, err := traqwsbot.NewBot(&traqwsbot.Options{
 		AccessToken: mustGetEnv("BOT_ACCESS_TOKEN"),
 		Origin:      os.Getenv("TRAQ_ORIGIN"),
@@ -72,6 +81,9 @@ func main() {
 	}
 
 	registerHandlers(bot)
+	if err := registerStampHandlers(bot); err != nil {
+		panic(err)
+	}
 
 	err = bot.Start()
 	if err != nil {
@@ -106,15 +118,6 @@ func registerHandlers(bot *traqwsbot.Bot) {
 		bot.OnChannelCreated(func(p *payload.ChannelCreated) {
 			slog.Info("CHANNEL_CREATED event received", "cid", p.Channel.ID)
 			if err := sendMessage(bot, fmt.Sprintf(`%s がチャンネル %s を作成しました`, createUserMention(p.Channel.Creator), createChannelMention(p.Channel))); err != nil {
-				slog.Error("sendMessage failed", "err", err)
-			}
-		})
-	}
-
-	if slices.Contains(subscribingEvents, eventTypeStampCreated) {
-		bot.OnStampCreated(func(p *payload.StampCreated) {
-			slog.Info("STAMP_CREATED event received", "sid", p.ID)
-			if err := sendMessage(bot, fmt.Sprintf("%s がスタンプ `:%s:` を作成しました\n:%s.ex-large:", createUserMention(p.Creator), p.Name, p.Name)); err != nil {
 				slog.Error("sendMessage failed", "err", err)
 			}
 		})
