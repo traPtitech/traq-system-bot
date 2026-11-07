@@ -1,16 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log/slog"
 	"os"
-	"slices"
 	"strings"
 
-	"github.com/traPtitech/go-traq"
 	traqwsbot "github.com/traPtitech/traq-ws-bot"
-	"github.com/traPtitech/traq-ws-bot/payload"
 )
 
 func mustGetEnv(key string) string {
@@ -80,8 +75,7 @@ func main() {
 		panic(err)
 	}
 
-	registerHandlers(bot)
-	if err := registerStampHandlers(bot); err != nil {
+	if err := registerHandlers(bot); err != nil {
 		panic(err)
 	}
 
@@ -91,55 +85,8 @@ func main() {
 	}
 }
 
-func registerHandlers(bot *traqwsbot.Bot) {
-	if slices.Contains(subscribingEvents, eventTypeUserCreated) {
-		bot.OnUserCreated(func(p *payload.UserCreated) {
-			slog.Info("USER_CREATED event received", "uid", p.User.ID)
-			if !p.User.Bot {
-				if err := sendMessage(bot, fmt.Sprintf(`%s がtraQに参加しました`, createUserMention(p.User))); err != nil {
-					slog.Error("sendMessage failed", "err", err)
-				}
-			}
-		})
-	}
-
-	if slices.Contains(subscribingEvents, eventTypeUserActivated) {
-		bot.OnUserActivated(func(p *payload.UserActivated) {
-			slog.Info("USER_ACTIVATED event received", "uid", p.User.ID)
-			if !p.User.Bot {
-				if err := sendMessage(bot, fmt.Sprintf(`%s がtraQに帰ってきました`, createUserMention(p.User))); err != nil {
-					slog.Error("sendMessage failed", "err", err)
-				}
-			}
-		})
-	}
-
-	if slices.Contains(subscribingEvents, eventTypeChannelCreated) {
-		bot.OnChannelCreated(func(p *payload.ChannelCreated) {
-			slog.Info("CHANNEL_CREATED event received", "cid", p.Channel.ID)
-			if err := sendMessage(bot, fmt.Sprintf(`%s がチャンネル %s を作成しました`, createUserMention(p.Channel.Creator), createChannelMention(p.Channel))); err != nil {
-				slog.Error("sendMessage failed", "err", err)
-			}
-		})
-	}
-}
-
-func createUserMention(user payload.User) string {
-	return fmt.Sprintf(`!{"type":"user","raw":"@%s","id":"%s"}`, user.Name, user.ID)
-}
-
-func createChannelMention(channel payload.Channel) string {
-	return fmt.Sprintf(`!{"type":"channel","raw":"%s","id":"%s"}`, channel.Path, channel.ID)
-}
-
-func sendMessage(bot *traqwsbot.Bot, text string) error {
-	_, _, err := bot.API().
-		ChannelApi.
-		PostMessage(context.Background(), systemMessageChannelID).
-		PostMessageRequest(traq.PostMessageRequest{
-			Content: text,
-			Embed:   nil,
-		}).
-		Execute()
-	return err
+func registerHandlers(bot *traqwsbot.Bot) error {
+	registerUserHandlers(bot)
+	registerChannelHandlers(bot)
+	return registerStampHandlers(bot)
 }
